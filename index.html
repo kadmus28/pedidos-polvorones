@@ -195,7 +195,7 @@ input, select, textarea { width:100%; border:1px solid var(--border); border-rad
 </div>
 
 <script>
-const supabase = window.supabase.createClient(
+const supabaseClient = window.supabase.createClient(
   "https://pnsrxjwgxtvrqpzrwcaf.supabase.co",
   "sb_publishable_B7FtGy7mR_pflZ-yytwBNg_ZF4crnKQ"
 );
@@ -221,7 +221,7 @@ async function loadOrders() {
  if (!currentUser || loading) return;
  loading = true;
  try {
-  const {data:access,error:accessError} = await supabase.from("app_access").select("user_id").eq("user_id",currentUser.id).maybeSingle();
+  const {data:access,error:accessError} = await supabaseClient.from("app_access").select("user_id").eq("user_id",currentUser.id).maybeSingle();
   if (accessError || !access) {
    orders = []; render(); $("authOverlay").classList.add("open");
    $("authMessage").textContent = "Esta cuenta no está autorizada. Solicita acceso al administrador.";
@@ -418,7 +418,7 @@ $("orderList").addEventListener("click",e=>{
 });
 
 async function updatePaid(o,paid) {
- const {error} = await supabase.from("orders")
+ const {error} = await supabaseClient.from("orders")
   .update({paid,updated_at:new Date().toISOString()})
   .eq("id",o.id);
  if (error) {
@@ -465,7 +465,7 @@ async function saveOrder(o) {
   return;
  }
 
- const {error} = await supabase.rpc("save_order", {
+ const {error} = await supabaseClient.rpc("save_order", {
   p_order_id:o.id,
   p_customer:o.customer,
   p_order_date:o.date,
@@ -490,7 +490,7 @@ async function saveOrder(o) {
 async function deleteOrder(id) {
  const order = orders.find(o=>o.id===id);
  if (!order || !confirm(`¿Eliminar el pedido de ${order.customer}? Esta acción no se puede deshacer.`)) return;
- const {error} = await supabase.from("orders").delete().eq("id",id).select("id").single();
+ const {error} = await supabaseClient.from("orders").delete().eq("id",id).select("id").single();
  if (error) {
   alert("No se pudo eliminar el pedido: "+error.message);
   return;
@@ -505,8 +505,8 @@ function showSignedIn(user) {
 }
 
 $("signOut").addEventListener("click", async ()=>{
- if (realtimeChannel) { await supabase.removeChannel(realtimeChannel); realtimeChannel = null; }
- const {error} = await supabase.auth.signOut();
+ if (realtimeChannel) { await supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
+ const {error} = await supabaseClient.auth.signOut();
  if (error) { alert("No se pudo cerrar sesión."); return; }
  currentUser = null;
  orders = [];
@@ -521,7 +521,7 @@ $("authForm").addEventListener("submit",async e=>{
  const msg = $("authMessage");
  msg.textContent = "Comprobando acceso…";
 
- const {data,error} = await supabase.auth.signInWithPassword({
+ const {data,error} = await supabaseClient.auth.signInWithPassword({
   email:$("authEmail").value.trim(),
   password:$("authPassword").value
  });
@@ -538,14 +538,14 @@ $("authForm").addEventListener("submit",async e=>{
 });
 
 function startRealtime() {
- if (realtimeChannel) supabase.removeChannel(realtimeChannel);
- realtimeChannel = supabase.channel("polvorones-live")
+ if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+ realtimeChannel = supabaseClient.channel("polvorones-live")
   .on("postgres_changes",{event:"*",schema:"public",table:"orders"},()=>loadOrders())
   .on("postgres_changes",{event:"*",schema:"public",table:"order_items"},()=>loadOrders())
   .subscribe();
 }
 
-supabase.auth.getSession().then(async ({data})=>{
+supabaseClient.auth.getSession().then(async ({data})=>{
  if (data.session) {
   showSignedIn(data.session.user);
   $("authOverlay").classList.remove("open");
@@ -564,6 +564,8 @@ render();
 </script>
 </body>
 </html>
+
+
 
 
 
